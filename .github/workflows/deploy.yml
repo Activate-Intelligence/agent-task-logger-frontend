@@ -85,9 +85,7 @@ jobs:
 
           # Package Server Lambda (Main SSR)
           if [ -d ".open-next/server-functions/default" ]; then
-            cd .open-next/server-functions/default
-            zip -r ../../../../deployment-server.zip .
-            cd ../../../..
+            (cd .open-next/server-functions/default && zip -r ../../../deployment-server.zip .)
             echo "✓ Server Lambda packaged"
           else
             echo "❌ Server function not found"
@@ -96,9 +94,7 @@ jobs:
 
           # Package Image Optimization Lambda (if exists)
           if [ -d ".open-next/image-optimization-function" ]; then
-            cd .open-next/image-optimization-function
-            zip -r ../../deployment-image.zip .
-            cd ../..
+            (cd .open-next/image-optimization-function && zip -r ../../deployment-image.zip .)
             echo "✓ Image Lambda packaged"
           else
             echo "⚠️  Image optimization function not found, skipping"
@@ -107,9 +103,7 @@ jobs:
 
           # Package Revalidation Lambda (if exists)
           if [ -d ".open-next/revalidation-function" ]; then
-            cd .open-next/revalidation-function
-            zip -r ../../deployment-revalidation.zip .
-            cd ../..
+            (cd .open-next/revalidation-function && zip -r ../../deployment-revalidation.zip .)
             echo "✓ Revalidation Lambda packaged"
           else
             echo "⚠️  Revalidation function not found, skipping"

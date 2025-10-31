@@ -79,23 +79,42 @@ jobs:
         run: |
           echo "📦 Packaging Lambda functions..."
 
+          # List what OpenNext actually created
+          echo "OpenNext output structure:"
+          ls -la .open-next/
+
           # Package Server Lambda (Main SSR)
-          cd .open-next/server-functions/default
-          zip -r ../../../../deployment-server.zip .
-          cd ../../../..
-          echo "✓ Server Lambda packaged"
+          if [ -d ".open-next/server-functions/default" ]; then
+            cd .open-next/server-functions/default
+            zip -r ../../../../deployment-server.zip .
+            cd ../../../..
+            echo "✓ Server Lambda packaged"
+          else
+            echo "❌ Server function not found"
+            exit 1
+          fi
 
-          # Package Image Optimization Lambda
-          cd .open-next/image-optimization-function
-          zip -r ../../deployment-image.zip .
-          cd ../..
-          echo "✓ Image Lambda packaged"
+          # Package Image Optimization Lambda (if exists)
+          if [ -d ".open-next/image-optimization-function" ]; then
+            cd .open-next/image-optimization-function
+            zip -r ../../deployment-image.zip .
+            cd ../..
+            echo "✓ Image Lambda packaged"
+          else
+            echo "⚠️  Image optimization function not found, skipping"
+            touch deployment-image.zip
+          fi
 
-          # Package Revalidation Lambda
-          cd .open-next/revalidation-function
-          zip -r ../../deployment-revalidation.zip .
-          cd ../..
-          echo "✓ Revalidation Lambda packaged"
+          # Package Revalidation Lambda (if exists)
+          if [ -d ".open-next/revalidation-function" ]; then
+            cd .open-next/revalidation-function
+            zip -r ../../deployment-revalidation.zip .
+            cd ../..
+            echo "✓ Revalidation Lambda packaged"
+          else
+            echo "⚠️  Revalidation function not found, skipping"
+            touch deployment-revalidation.zip
+          fi
 
           # Verify packages
           ls -lh deployment-*.zip

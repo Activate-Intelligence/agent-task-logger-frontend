@@ -1,17 +1,7 @@
 # Outputs
-output "cloudfront_url" {
-  value       = "https://${aws_cloudfront_distribution.frontend_opennext.domain_name}"
-  description = "Frontend application URL (CloudFront HTTPS endpoint)"
-}
-
-output "cloudfront_distribution_id" {
-  value       = aws_cloudfront_distribution.frontend_opennext.id
-  description = "CloudFront distribution ID for frontend"
-}
-
-output "cloudfront_domain_name" {
-  value       = aws_cloudfront_distribution.frontend_opennext.domain_name
-  description = "CloudFront distribution domain name"
+output "frontend_url" {
+  value       = aws_lambda_function_url.frontend_server.function_url
+  description = "Frontend application URL (direct Lambda Function URL)"
 }
 
 output "server_lambda_name" {

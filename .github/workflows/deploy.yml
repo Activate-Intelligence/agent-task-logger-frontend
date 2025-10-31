@@ -315,46 +315,11 @@ jobs:
             -var="s3_prefix=${{ steps.upload.outputs.s3_prefix }}" \
             -var="environment=$ENVIRONMENT"
 
-      - name: Get Terraform Outputs
-        id: tf_outputs
-        run: |
-          cd terraform
-          echo "cloudfront_url=$(terraform output -raw cloudfront_url)" >> $GITHUB_OUTPUT
-          echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
-
-      - name: Invalidate CloudFront Cache
-        run: |
-          DISTRIBUTION_ID=${{ steps.tf_outputs.outputs.cloudfront_id }}
-
-          if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" = "null" ]; then
-            echo "ℹ️  CloudFront distribution ID not found, skipping invalidation"
-            exit 0
-          fi
-
-          echo "🔄 Creating CloudFront invalidation for distribution: $DISTRIBUTION_ID"
-
-          INVALIDATION_ID=$(aws cloudfront create-invalidation \
-            --distribution-id "$DISTRIBUTION_ID" \
-            --paths "/*" \
-            --query 'Invalidation.Id' \
-            --output text)
-
-          echo "✅ CloudFront invalidation created: $INVALIDATION_ID"
-          echo "⏳ Waiting for cache invalidation to complete..."
-
-          # Wait for invalidation to complete (typically 1-2 minutes)
-          aws cloudfront wait invalidation-completed \
-            --distribution-id "$DISTRIBUTION_ID" \
-            --id "$INVALIDATION_ID"
-
-          echo "✅ CloudFront cache invalidation completed successfully"
-
       - name: Show endpoints
         run: |
           cd terraform
           echo "::notice title=Environment::${{ steps.env.outputs.environment }}"
-          echo "::notice title=Frontend URL::$(terraform output -raw cloudfront_url)"
-          echo "::notice title=CloudFront Distribution ID::$(terraform output -raw cloudfront_distribution_id)"
+          echo "::notice title=Frontend URL::$(terraform output -raw frontend_url)"
           echo "::notice title=Server Lambda::$(terraform output -raw server_lambda_name)"
           echo "::notice title=Image Lambda::$(terraform output -raw image_lambda_name)"
           echo "::notice title=S3 Assets Bucket::$(terraform output -raw assets_bucket_name)"

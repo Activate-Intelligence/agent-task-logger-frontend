@@ -79,13 +79,19 @@ jobs:
         run: |
           echo "📦 Packaging Lambda functions..."
 
+          # Get absolute path to working directory
+          WORK_DIR="$(pwd)"
+          echo "Working directory: $WORK_DIR"
+
           # List what OpenNext actually created
           echo "OpenNext output structure:"
           ls -la .open-next/
 
           # Package Server Lambda (Main SSR)
           if [ -d ".open-next/server-functions/default" ]; then
-            (cd .open-next/server-functions/default && zip -r ../../../deployment-server.zip .)
+            cd .open-next/server-functions/default
+            zip -r "$WORK_DIR/deployment-server.zip" .
+            cd "$WORK_DIR"
             echo "✓ Server Lambda packaged"
           else
             echo "❌ Server function not found"
@@ -94,24 +100,28 @@ jobs:
 
           # Package Image Optimization Lambda (if exists)
           if [ -d ".open-next/image-optimization-function" ]; then
-            (cd .open-next/image-optimization-function && zip -r ../../deployment-image.zip .)
+            cd .open-next/image-optimization-function
+            zip -r "$WORK_DIR/deployment-image.zip" .
+            cd "$WORK_DIR"
             echo "✓ Image Lambda packaged"
           else
             echo "⚠️  Image optimization function not found, skipping"
-            touch deployment-image.zip
+            touch "$WORK_DIR/deployment-image.zip"
           fi
 
           # Package Revalidation Lambda (if exists)
           if [ -d ".open-next/revalidation-function" ]; then
-            (cd .open-next/revalidation-function && zip -r ../../deployment-revalidation.zip .)
+            cd .open-next/revalidation-function
+            zip -r "$WORK_DIR/deployment-revalidation.zip" .
+            cd "$WORK_DIR"
             echo "✓ Revalidation Lambda packaged"
           else
             echo "⚠️  Revalidation function not found, skipping"
-            touch deployment-revalidation.zip
+            touch "$WORK_DIR/deployment-revalidation.zip"
           fi
 
           # Verify packages
-          ls -lh deployment-*.zip
+          ls -lh "$WORK_DIR/deployment-"*.zip
 
       - name: AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v3

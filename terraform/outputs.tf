@@ -1,7 +1,12 @@
 # Outputs
 output "frontend_url" {
-  value       = aws_lambda_function_url.frontend_server.function_url
-  description = "Frontend application URL (direct Lambda Function URL)"
+  value       = "https://${aws_cloudfront_distribution.frontend_opennext.domain_name}"
+  description = "Frontend application URL (CloudFront distribution)"
+}
+
+output "cloudfront_domain" {
+  value       = aws_cloudfront_distribution.frontend_opennext.domain_name
+  description = "CloudFront distribution domain name"
 }
 
 output "server_lambda_name" {

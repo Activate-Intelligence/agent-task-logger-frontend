@@ -190,7 +190,7 @@ jobs:
       - name: Upload Static Assets to S3
         run: |
           ENVIRONMENT=${{ steps.env.outputs.environment }}
-          S3_ASSETS_PATH="s3://$S3_BUCKET/agent-task-logger-frontend/$ENVIRONMENT/frontend/"
+          S3_ASSETS_PATH="s3://$S3_BUCKET/agent-task-logger-frontend/$ENVIRONMENT/frontend"
 
           echo "🚀 Uploading static assets to $S3_ASSETS_PATH"
 

@@ -167,6 +167,11 @@ resource "aws_lambda_function" "frontend_server" {
 
   environment {
     variables = {
+      # Asset serving configuration (for static files from S3)
+      BUCKET_NAME               = local.assets_bucket_name
+      BUCKET_REGION             = var.aws_region
+      BUCKET_KEY_PREFIX         = local.assets_bucket_prefix
+      # Cache configuration (for ISR/SSR caching)
       CACHE_BUCKET_NAME         = local.assets_bucket_name
       CACHE_BUCKET_REGION       = var.aws_region
       CACHE_BUCKET_KEY_PREFIX   = "${local.assets_bucket_prefix}_cache"

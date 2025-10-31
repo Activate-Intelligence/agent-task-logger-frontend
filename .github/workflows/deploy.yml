@@ -1,0 +1,344 @@
+name: Deploy agent-task-logger-frontend Lambda
+
+on:
+  push:
+    branches: [main, 'prod**']
+  pull_request:
+    branches: ['prod**']
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      TF_VAR_function_name: agent-task-logger-frontend
+      TF_VAR_aws_region: eu-west-2
+      S3_BUCKET: 533267084389-lambda-artifacts
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine Environment
+        id: env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "Environment: dev (main branch)"
+          elif [[ "${{ github.ref }}" == refs/heads/prod* ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+            echo "Environment: prod (production branch)"
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+            echo "Environment: dev (default)"
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+
+      - name: Build Frontend with OpenNext
+        run: |
+          ENVIRONMENT=${{ steps.env.outputs.environment }}
+
+          echo "🏗️  Building frontend with OpenNext for $ENVIRONMENT environment..."
+
+          # Create .env.production for build-time variables
+          cat > .env.production <<EOF
+          NEXT_PUBLIC_API_URL=${{ secrets.API_URL }}
+          NEXT_PUBLIC_AWS_REGION=eu-west-2
+          NEXT_PUBLIC_ENVIRONMENT=$ENVIRONMENT
+          EOF
+
+          echo "📦 Installing dependencies..."
+          npm ci
+
+          echo "🔨 Building Next.js application with OpenNext..."
+          npx open-next@latest build
+
+          echo "✅ OpenNext build completed"
+
+          # Verify OpenNext build output
+          if [ -d ".open-next" ]; then
+            echo "✓ OpenNext build directory created"
+            ls -la .open-next/
+          else
+            echo "❌ OpenNext build failed - .open-next directory not found"
+            exit 1
+          fi
+
+      - name: Package Lambda Functions
+        run: |
+          echo "📦 Packaging Lambda functions..."
+
+          # Package Server Lambda (Main SSR)
+          cd .open-next/server-functions/default
+          zip -r ../../../../deployment-server.zip .
+          cd ../../../..
+          echo "✓ Server Lambda packaged"
+
+          # Package Image Optimization Lambda
+          cd .open-next/image-optimization-function
+          zip -r ../../deployment-image.zip .
+          cd ../..
+          echo "✓ Image Lambda packaged"
+
+          # Package Revalidation Lambda
+          cd .open-next/revalidation-function
+          zip -r ../../deployment-revalidation.zip .
+          cd ../..
+          echo "✓ Revalidation Lambda packaged"
+
+          # Verify packages
+          ls -lh deployment-*.zip
+
+      - name: AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: arn:aws:iam::533267084389:role/github
+          aws-region: eu-west-2
+
+      - name: Create S3 bucket if not exists
+        run: |
+          echo "Checking if S3 bucket exists..."
+          if aws s3api head-bucket --bucket "$S3_BUCKET" 2>/dev/null; then
+            echo "✓ S3 bucket $S3_BUCKET already exists"
+          else
+            echo "Creating S3 bucket $S3_BUCKET..."
+            aws s3api create-bucket \
+              --bucket "$S3_BUCKET" \
+              --region eu-west-2 \
+              --create-bucket-configuration LocationConstraint=eu-west-2
+
+            # Enable versioning
+            aws s3api put-bucket-versioning \
+              --bucket "$S3_BUCKET" \
+              --versioning-configuration Status=Enabled
+
+            # Enable encryption
+            aws s3api put-bucket-encryption \
+              --bucket "$S3_BUCKET" \
+              --server-side-encryption-configuration '{
+                "Rules": [
+                  {
+                    "ApplyServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }'
+
+            echo "✓ S3 bucket $S3_BUCKET created successfully"
+          fi
+
+      - name: Upload Lambda packages to S3
+        id: upload
+        run: |
+          ENVIRONMENT=${{ steps.env.outputs.environment }}
+          S3_PREFIX="agent-task-logger-frontend/$ENVIRONMENT/"
+
+          echo "Uploading Lambda packages to S3..."
+          echo "Target S3 prefix: s3://$S3_BUCKET/${S3_PREFIX}"
+
+          # Upload Server Lambda
+          aws s3 cp deployment-server.zip "s3://$S3_BUCKET/${S3_PREFIX}deployment-server.zip" \
+            --metadata "deployment-timestamp=$(date -u +%Y%m%d%H%M%S),git-sha=${{ github.sha }},environment=$ENVIRONMENT"
+
+          # Upload Image Lambda
+          aws s3 cp deployment-image.zip "s3://$S3_BUCKET/${S3_PREFIX}deployment-image.zip" \
+            --metadata "deployment-timestamp=$(date -u +%Y%m%d%H%M%S),git-sha=${{ github.sha }},environment=$ENVIRONMENT"
+
+          # Upload Revalidation Lambda
+          aws s3 cp deployment-revalidation.zip "s3://$S3_BUCKET/${S3_PREFIX}deployment-revalidation.zip" \
+            --metadata "deployment-timestamp=$(date -u +%Y%m%d%H%M%S),git-sha=${{ github.sha }},environment=$ENVIRONMENT"
+
+          echo "s3_prefix=${S3_PREFIX}" >> $GITHUB_OUTPUT
+          echo "s3_bucket=$S3_BUCKET" >> $GITHUB_OUTPUT
+          echo "✓ All Lambda packages uploaded"
+
+      - name: Upload Static Assets to S3
+        run: |
+          ENVIRONMENT=${{ steps.env.outputs.environment }}
+          S3_ASSETS_PATH="s3://$S3_BUCKET/agent-task-logger-frontend/$ENVIRONMENT/frontend/"
+
+          echo "🚀 Uploading static assets to $S3_ASSETS_PATH"
+
+          # Upload assets (_next/static/*)
+          if [ -d ".open-next/assets" ]; then
+            aws s3 sync .open-next/assets "$S3_ASSETS_PATH/_assets/" \
+              --cache-control "public, max-age=31536000, immutable"
+            echo "✓ Assets uploaded"
+          fi
+
+          # Upload cache files
+          if [ -d ".open-next/cache" ]; then
+            aws s3 sync .open-next/cache "$S3_ASSETS_PATH/_cache/" \
+              --cache-control "public, max-age=0, must-revalidate"
+            echo "✓ Cache files uploaded"
+          fi
+
+      - name: Upload all secrets to SSM
+        env:
+          SECRETS_JSON: ${{ toJson(secrets) }}
+          ENVIRONMENT: ${{ steps.env.outputs.environment }}
+        run: |
+          echo "Uploading all repository secrets to SSM Parameter Store..."
+
+          # Function to create or update SSM parameter
+          create_or_update_parameter() {
+            local param_name="$1"
+            local param_value="$2"
+            local param_type="$3"
+
+            echo "Processing parameter: $param_name"
+
+            # First, try to create the parameter with tags (new parameter)
+            if aws ssm put-parameter \
+              --name "$param_name" \
+              --value "$param_value" \
+              --type "$param_type" \
+              --tags Key=Name,Value="agent-task-logger-frontend-$(basename $param_name)" Key=Environment,Value=$ENVIRONMENT Key=ManagedBy,Value=GitHubActions \
+              --no-overwrite \
+              2>/dev/null; then
+              echo "✓ Created new parameter: $param_name"
+            else
+              # Parameter exists, update it (without tags)
+              if aws ssm put-parameter \
+                --name "$param_name" \
+                --value "$param_value" \
+                --type "$param_type" \
+                --overwrite; then
+                echo "✓ Updated existing parameter: $param_name"
+
+                # Try to add/update tags separately (ignore errors if tags already exist)
+                aws ssm add-tags-to-resource \
+                  --resource-type "Parameter" \
+                  --resource-id "$param_name" \
+                  --tags Key=Name,Value="agent-task-logger-frontend-$(basename $param_name)" Key=Environment,Value=$ENVIRONMENT Key=ManagedBy,Value=GitHubActions \
+                  2>/dev/null || echo "Note: Could not update tags for $param_name (may already exist)"
+              else
+                echo "❌ Failed to create/update parameter: $param_name"
+                return 1
+              fi
+            fi
+          }
+
+          # Parse secrets and upload each one
+          echo "$SECRETS_JSON" | jq -r 'to_entries[] | select(.key != "GITHUB_TOKEN") | @base64' | while read -r entry; do
+            # Decode the entry
+            decoded=$(echo $entry | base64 --decode)
+
+            # Extract key and value
+            key=$(echo $decoded | jq -r '.key')
+            value=$(echo $decoded | jq -r '.value')
+
+            # Skip empty values
+            if [ -n "$value" ] && [ "$value" != "null" ]; then
+              # Determine parameter type based on key name
+              if [[ $key == *"API_KEY"* ]] || [[ $key == *"TOKEN"* ]] || [[ $key == *"SECRET"* ]] || [[ $key == *"PASSWORD"* ]]; then
+                param_type="SecureString"
+              else
+                param_type="String"
+              fi
+
+              # Create full parameter name with environment
+              param_name="/app/agent-task-logger-frontend/$ENVIRONMENT/$key"
+
+              # Create or update the parameter
+              create_or_update_parameter "$param_name" "$value" "$param_type"
+            else
+              echo "⚠ Skipping empty secret: $key"
+            fi
+          done
+
+          echo "✓ All secrets processed for SSM Parameter Store"
+
+      - name: Verify SSM parameters
+        run: |
+          ENVIRONMENT=${{ steps.env.outputs.environment }}
+          echo "Verifying uploaded parameters..."
+          aws ssm describe-parameters \
+            --parameter-filters Key=Name,Values="/app/agent-task-logger-frontend/$ENVIRONMENT/" \
+            --query 'Parameters[].{Name:Name,Type:Type,LastModifiedDate:LastModifiedDate}' \
+            --output table
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init + apply
+        env:
+          ENVIRONMENT: ${{ steps.env.outputs.environment }}
+        run: |
+          # Update terraform backend key with environment
+          terraform -chdir=terraform init \
+            -backend-config="region=eu-west-2" \
+            -backend-config="bucket=533267084389-tf-state" \
+            -backend-config="key=aws/$ENVIRONMENT/agents/agent-task-logger-frontend" \
+            -backend-config="encrypt=true" \
+            -backend-config="use_lockfile=true"
+
+          terraform -chdir=terraform apply -auto-approve \
+            -var="s3_bucket=${{ steps.upload.outputs.s3_bucket }}" \
+            -var="s3_prefix=${{ steps.upload.outputs.s3_prefix }}" \
+            -var="environment=$ENVIRONMENT"
+
+      - name: Get Terraform Outputs
+        id: tf_outputs
+        run: |
+          cd terraform
+          echo "cloudfront_url=$(terraform output -raw cloudfront_url)" >> $GITHUB_OUTPUT
+          echo "cloudfront_id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+
+      - name: Invalidate CloudFront Cache
+        run: |
+          DISTRIBUTION_ID=${{ steps.tf_outputs.outputs.cloudfront_id }}
+
+          if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" = "null" ]; then
+            echo "ℹ️  CloudFront distribution ID not found, skipping invalidation"
+            exit 0
+          fi
+
+          echo "🔄 Creating CloudFront invalidation for distribution: $DISTRIBUTION_ID"
+
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+
+          echo "✅ CloudFront invalidation created: $INVALIDATION_ID"
+          echo "⏳ Waiting for cache invalidation to complete..."
+
+          # Wait for invalidation to complete (typically 1-2 minutes)
+          aws cloudfront wait invalidation-completed \
+            --distribution-id "$DISTRIBUTION_ID" \
+            --id "$INVALIDATION_ID"
+
+          echo "✅ CloudFront cache invalidation completed successfully"
+
+      - name: Show endpoints
+        run: |
+          cd terraform
+          echo "::notice title=Environment::${{ steps.env.outputs.environment }}"
+          echo "::notice title=Frontend URL::$(terraform output -raw cloudfront_url)"
+          echo "::notice title=CloudFront Distribution ID::$(terraform output -raw cloudfront_distribution_id)"
+          echo "::notice title=Server Lambda::$(terraform output -raw server_lambda_name)"
+          echo "::notice title=Image Lambda::$(terraform output -raw image_lambda_name)"
+          echo "::notice title=S3 Assets Bucket::$(terraform output -raw assets_bucket_name)"
+
+      - name: Clean up local artifacts
+        run: |
+          echo "Cleaning up local build artifacts..."
+          rm -f deployment-*.zip
+          rm -rf .open-next/
+          echo "✓ Local artifacts cleaned up"

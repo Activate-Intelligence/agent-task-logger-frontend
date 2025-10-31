@@ -36,11 +36,6 @@ resource "aws_cloudfront_distribution" "frontend_opennext" {
       origin_protocol_policy = "https-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
-
-    custom_header {
-      name  = "x-forwarded-host"
-      value = aws_cloudfront_distribution.frontend_opennext.domain_name
-    }
   }
 
   # Origin 3: Lambda Function URL for Image Optimization

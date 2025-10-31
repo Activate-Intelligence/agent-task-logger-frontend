@@ -1,26 +1,15 @@
 # OpenNext Frontend Infrastructure
 # This file configures AWS resources for deploying Next.js with OpenNext
 
-# S3 Bucket for frontend static assets and cache
-resource "aws_s3_bucket" "frontend_assets" {
-  bucket = "${var.s3_bucket_prefix}-frontend-assets-${var.environment}"
-
-  tags = {
-    Name        = "task-logger-frontend-assets-${var.environment}"
-    Environment = var.environment
-    Application = "agent-task-logger-frontend"
-    ManagedBy   = "Terraform"
-  }
+# Reference existing S3 bucket for frontend static assets and cache
+data "aws_s3_bucket" "lambda_artifacts" {
+  bucket = "${var.s3_bucket_prefix}-lambda-artifacts"
 }
 
-# Block public access to assets bucket
-resource "aws_s3_bucket_public_access_block" "frontend_assets" {
-  bucket = aws_s3_bucket.frontend_assets.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+# S3 bucket name for frontend assets (using existing artifacts bucket with path prefix)
+locals {
+  assets_bucket_name   = data.aws_s3_bucket.lambda_artifacts.id
+  assets_bucket_prefix = "agent-task-logger-frontend/${var.environment}/frontend/"
 }
 
 # DynamoDB table for ISR cache and tags
@@ -128,14 +117,14 @@ resource "aws_iam_role_policy" "frontend_server_lambda" {
           "s3:PutObject",
           "s3:DeleteObject"
         ]
-        Resource = "${aws_s3_bucket.frontend_assets.arn}/*"
+        Resource = "${data.aws_s3_bucket.lambda_artifacts.arn}/${local.assets_bucket_prefix}*"
       },
       {
         Effect = "Allow"
         Action = [
           "s3:ListBucket"
         ]
-        Resource = aws_s3_bucket.frontend_assets.arn
+        Resource = data.aws_s3_bucket.lambda_artifacts.arn
       },
       {
         Effect = "Allow"
@@ -178,9 +167,9 @@ resource "aws_lambda_function" "frontend_server" {
 
   environment {
     variables = {
-      CACHE_BUCKET_NAME         = aws_s3_bucket.frontend_assets.id
+      CACHE_BUCKET_NAME         = local.assets_bucket_name
       CACHE_BUCKET_REGION       = var.aws_region
-      CACHE_BUCKET_KEY_PREFIX   = "_cache"
+      CACHE_BUCKET_KEY_PREFIX   = "${local.assets_bucket_prefix}_cache"
       CACHE_DYNAMO_TABLE        = aws_dynamodb_table.frontend_cache.name
       REVALIDATION_QUEUE_URL    = aws_sqs_queue.revalidation.url
       REVALIDATION_QUEUE_REGION = var.aws_region
@@ -254,7 +243,7 @@ resource "aws_iam_role_policy" "frontend_image_lambda" {
         Action = [
           "s3:GetObject"
         ]
-        Resource = "${aws_s3_bucket.frontend_assets.arn}/*"
+        Resource = "${data.aws_s3_bucket.lambda_artifacts.arn}/${local.assets_bucket_prefix}*"
       }
     ]
   })
@@ -274,8 +263,9 @@ resource "aws_lambda_function" "frontend_image" {
 
   environment {
     variables = {
-      BUCKET_NAME   = aws_s3_bucket.frontend_assets.id
+      BUCKET_NAME   = local.assets_bucket_name
       BUCKET_REGION = var.aws_region
+      BUCKET_KEY_PREFIX = local.assets_bucket_prefix
     }
   }
 

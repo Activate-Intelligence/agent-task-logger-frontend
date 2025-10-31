@@ -30,8 +30,13 @@ output "revalidation_lambda_name" {
 }
 
 output "assets_bucket_name" {
-  value       = aws_s3_bucket.frontend_assets.id
+  value       = local.assets_bucket_name
   description = "Frontend assets S3 bucket name"
+}
+
+output "assets_bucket_prefix" {
+  value       = local.assets_bucket_prefix
+  description = "Frontend assets S3 bucket prefix path"
 }
 
 output "cache_table_name" {

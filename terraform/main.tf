@@ -65,6 +65,19 @@ resource "aws_dynamodb_table" "frontend_cache" {
     type = "S"
   }
 
+  attribute {
+    name = "revalidatedAt"
+    type = "N"
+  }
+
+  # Global Secondary Index for revalidation queries
+  global_secondary_index {
+    name            = "revalidate"
+    hash_key        = "path"
+    range_key       = "revalidatedAt"
+    projection_type = "ALL"
+  }
+
   ttl {
     attribute_name = "expireAt"
     enabled        = true
@@ -145,14 +158,25 @@ resource "aws_iam_role_policy" "frontend_server_lambda" {
       {
         Effect = "Allow"
         Action = [
+          "s3:ListBucket"
+        ]
+        Resource = aws_s3_bucket.frontend_assets.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
           "dynamodb:GetItem",
           "dynamodb:PutItem",
           "dynamodb:UpdateItem",
           "dynamodb:DeleteItem",
+          "dynamodb:BatchWriteItem",
           "dynamodb:Query",
           "dynamodb:Scan"
         ]
-        Resource = aws_dynamodb_table.frontend_cache.arn
+        Resource = [
+          aws_dynamodb_table.frontend_cache.arn,
+          "${aws_dynamodb_table.frontend_cache.arn}/index/*"
+        ]
       },
       {
         Effect = "Allow"

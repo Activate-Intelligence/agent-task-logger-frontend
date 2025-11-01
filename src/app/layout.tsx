@@ -5,6 +5,10 @@ import { ClientLayout } from '@/components/providers/ClientLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Force all routes to be dynamically rendered
+export const dynamic = 'force-dynamic'
+export const dynamicParams = true
+
 export const metadata: Metadata = {
   title: 'Task Logger - Track Your Work',
   description: 'Professional task logging and time tracking application',

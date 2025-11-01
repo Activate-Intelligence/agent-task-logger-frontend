@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Shield, UserPlus, Pencil, Trash2, AlertCircle, Users, CheckCircle2, Loader2 } from 'lucide-react';
+import { ConversationDrawer } from '@/components/admin/ConversationDrawer';
 
 interface User {
   username: string;
@@ -50,6 +51,8 @@ function AdminContent() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedUsername, setSelectedUsername] = useState<string | null>(null);
+  const [isConversationDrawerOpen, setIsConversationDrawerOpen] = useState(false);
 
   // Form state for creating user
   const [newUser, setNewUser] = useState({
@@ -225,6 +228,16 @@ function AdminContent() {
     setIsEditDialogOpen(true);
   };
 
+  const handleRowClick = (username: string) => {
+    setSelectedUsername(username);
+    setIsConversationDrawerOpen(true);
+  };
+
+  const handleCloseDrawer = () => {
+    setIsConversationDrawerOpen(false);
+    setSelectedUsername(null);
+  };
+
   return (
     <AppLayout
       pageTitle="Admin Panel"
@@ -282,7 +295,11 @@ function AdminContent() {
                 </TableHeader>
                 <TableBody>
                   {users.map((user) => (
-                    <TableRow key={user.username}>
+                    <TableRow
+                      key={user.username}
+                      className="hover:bg-slate-50 cursor-pointer"
+                      onClick={() => handleRowClick(user.username)}
+                    >
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell>
                         {user.role === 'admin' ? (
@@ -312,14 +329,20 @@ function AdminContent() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openEditDialog(user)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openEditDialog(user);
+                            }}
                           >
                             <Pencil className="h-3 w-3" />
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleDeleteUser(user.username)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteUser(user.username);
+                            }}
                             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -428,6 +451,13 @@ function AdminContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+        {/* Conversation Drawer */}
+        <ConversationDrawer
+          username={selectedUsername}
+          isOpen={isConversationDrawerOpen}
+          onClose={handleCloseDrawer}
+        />
       </div>
     </AppLayout>
   );

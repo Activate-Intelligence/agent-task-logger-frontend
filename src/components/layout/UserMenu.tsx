@@ -1,6 +1,4 @@
-'use client';
-
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import {
   DropdownMenu,
@@ -16,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { LogOut, User, Settings, Shield } from 'lucide-react';
 
 export function UserMenu() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
 
   if (!user) {
@@ -25,7 +23,7 @@ export function UserMenu() {
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/');
+    navigate('/', { replace: true });
   };
 
   const getInitials = (username: string) => {
@@ -73,16 +71,16 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push('/dashboard/')}>
+        <DropdownMenuItem onClick={() => navigate('/dashboard')}>
           <User className="mr-2 h-4 w-4" />
           <span>Dashboard</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push('/settings/')}>
+        <DropdownMenuItem onClick={() => navigate('/settings')}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>
         {isAdmin && (
-          <DropdownMenuItem onClick={() => router.push('/admin/')}>
+          <DropdownMenuItem onClick={() => navigate('/admin')}>
             <Shield className="mr-2 h-4 w-4" />
             <span>Admin Panel</span>
           </DropdownMenuItem>

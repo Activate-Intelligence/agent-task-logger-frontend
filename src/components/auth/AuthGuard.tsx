@@ -1,7 +1,5 @@
-'use client';
-
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth-store';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -11,7 +9,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children, fallback }: AuthGuardProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { isAuthenticated, hasHydrated, checkAuth, token } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
@@ -32,7 +30,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
       if (!token) {
         console.log('[AuthGuard] No token found, redirecting to login');
         setIsChecking(false);
-        router.replace('/');
+        navigate('/', { replace: true });
         return;
       }
 
@@ -45,20 +43,20 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
         if (!valid) {
           // Token is invalid or expired, redirect to login
           console.log('[AuthGuard] Invalid token, redirecting to login');
-          router.replace('/');
+          navigate('/', { replace: true });
         } else {
           console.log('[AuthGuard] Authentication successful');
         }
       } catch (error) {
         console.error('[AuthGuard] Error during auth check:', error);
-        router.replace('/');
+        navigate('/', { replace: true });
       }
 
       setIsChecking(false);
     };
 
     verifyAuth();
-  }, [hasHydrated, token, router, checkAuth, isAuthenticated]);
+  }, [hasHydrated, token, navigate, checkAuth, isAuthenticated]);
 
   // Show loading state while hydrating or checking
   if (!hasHydrated || isChecking) {

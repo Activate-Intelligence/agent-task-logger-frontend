@@ -1,5 +1,3 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import { AdminGuard } from '@/components/auth/AdminGuard';
 import { useAuthStore } from '@/stores/auth-store';
@@ -78,7 +76,7 @@ function AdminContent() {
         throw new Error('No authentication token found');
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -115,7 +113,7 @@ function AdminContent() {
         return;
       }
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/admin/users`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +154,7 @@ function AdminContent() {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/users/${selectedUser.username}/role`,
+        `${import.meta.env.VITE_API_URL}/admin/users/${selectedUser.username}/role`,
         {
           method: 'PUT',
           headers: {
@@ -181,45 +179,6 @@ function AdminContent() {
     }
   };
 
-  // TODO: Add status toggle button in the UI
-  // const handleUpdateStatus = async (username: string, newStatus: 'active' | 'disabled') => {
-  //   try {
-  //     setError('');
-  //     setSuccess('');
-
-  //     const token = localStorage.getItem('auth-storage');
-  //     if (!token) {
-  //       throw new Error('No authentication token found');
-  //     }
-
-  //     const authData = JSON.parse(token);
-  //     const authToken = authData.state.token;
-
-  //     const response = await fetch(
-  //       `${process.env.NEXT_PUBLIC_API_URL}/admin/users/${username}/status`,
-  //       {
-  //         method: 'PUT',
-  //         headers: {
-  //           'Content-Type': 'application/json',
-  //           'Authorization': `Bearer ${authToken}`,
-  //         },
-  //         body: JSON.stringify({ status: newStatus }),
-  //       }
-  //     );
-
-  //     if (!response.ok) {
-  //       const errorData = await response.json();
-  //       throw new Error(errorData.message || 'Failed to update status');
-  //     }
-
-  //     setSuccess(`Status updated for "${username}"`);
-  //     loadUsers();
-  //   } catch (err: any) {
-  //     console.error('Update status error:', err);
-  //     setError(err.message || 'Failed to update status');
-  //   }
-  // };
-
   const handleDeleteUser = async (username: string) => {
     if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
       return;
@@ -235,7 +194,7 @@ function AdminContent() {
       }
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/users/${username}`,
+        `${import.meta.env.VITE_API_URL}/admin/users/${username}`,
         {
           method: 'DELETE',
           headers: {

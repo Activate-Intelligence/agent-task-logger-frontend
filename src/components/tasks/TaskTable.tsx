@@ -1,4 +1,3 @@
-'use client';
 
 import { Task } from '@/lib/api/mcp-client';
 import {

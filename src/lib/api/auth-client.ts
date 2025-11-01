@@ -23,10 +23,10 @@ export class AuthClient {
 
   constructor() {
     // Normalize URL by removing trailing slashes to prevent double-slash issues
-    this.baseUrl = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/+$/, '');
+    this.baseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
     // Don't throw during build time (SSG), only validate at runtime
     if (typeof window !== 'undefined' && !this.baseUrl) {
-      throw new Error('NEXT_PUBLIC_API_URL environment variable is not set');
+      throw new Error('VITE_API_URL environment variable is not set');
     }
   }
 

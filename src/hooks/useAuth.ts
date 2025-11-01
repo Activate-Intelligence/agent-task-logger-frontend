@@ -1,4 +1,3 @@
-'use client';
 
 import { useAuthStore } from '@/stores/auth-store';
 import { authClient } from '@/lib/api/auth-client';

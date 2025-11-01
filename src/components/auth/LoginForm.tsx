@@ -1,7 +1,5 @@
-'use client';
-
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,7 +21,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { login } = useAuth();
   const [error, setError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
@@ -46,7 +44,7 @@ export function LoginForm() {
 
       if (success) {
         // Login successful - redirect to dashboard (replace to avoid back button loop)
-        router.replace('/dashboard');
+        navigate('/dashboard', { replace: true });
       } else {
         setError('Failed to login. Please check your credentials.');
       }

@@ -1,7 +1,5 @@
-'use client';
-
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useAuthStore } from '@/stores/auth-store';
 import { AuthGuard } from './AuthGuard';
@@ -14,7 +12,7 @@ interface AdminGuardProps {
 }
 
 export function AdminGuard({ children }: AdminGuardProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { isAdmin, isLoading } = useAuth();
   const { hasHydrated } = useAuthStore();
 
@@ -24,9 +22,9 @@ export function AdminGuard({ children }: AdminGuardProps) {
 
     if (!isLoading && !isAdmin) {
       // Redirect to dashboard if not admin - use replace to avoid back button loop
-      router.replace('/dashboard');
+      navigate('/dashboard', { replace: true });
     }
-  }, [hasHydrated, isAdmin, isLoading, router]);
+  }, [hasHydrated, isAdmin, isLoading, navigate]);
 
   return (
     <AuthGuard>
@@ -47,7 +45,7 @@ export function AdminGuard({ children }: AdminGuardProps) {
             <Button
               variant="outline"
               className="mt-4"
-              onClick={() => router.replace('/dashboard')}
+              onClick={() => navigate('/dashboard', { replace: true })}
             >
               Go to Dashboard
             </Button>

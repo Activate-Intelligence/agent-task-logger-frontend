@@ -7,15 +7,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Local Development
 ```bash
 npm install          # Install dependencies
-npm run dev          # Run Next.js dev server (http://localhost:3000)
+npm run dev          # Run Vite dev server (http://localhost:3000)
 npm run build        # Build for production
+npm run preview      # Preview production build
 npm run typecheck    # Run TypeScript type checking
 npm run lint         # Run ESLint
-```
-
-### OpenNext Build (AWS Lambda)
-```bash
-npx open-next@latest build    # Build with OpenNext for Lambda deployment
 ```
 
 ### Terraform Deployment
@@ -38,21 +34,22 @@ terraform apply \
 ## Architecture Overview
 
 ### Tech Stack
-- **Next.js 14** with App Router (SSR/SSG)
-- **OpenNext** for AWS Lambda deployment
-- **shadcn/ui** + **Radix UI** for components
-- **Tailwind CSS** for styling
-- **Zustand** for client state management
-- **TanStack Query** for server state
-- **React Hook Form** + **Zod** for forms/validation
+- **Vite 5** - Modern build tool and dev server
+- **React 18.3** - UI library
+- **React Router v6** - Client-side routing
+- **shadcn/ui** + **Radix UI** - Component library
+- **Tailwind CSS** - Utility-first styling
+- **Zustand** - Client state management
+- **React Hook Form** + **Zod** - Forms and validation
+- **TypeScript** - Type safety
 
 ### AWS Infrastructure
-The application deploys as a serverless Next.js app using:
-- **3 Lambda Functions**: server (SSR), image optimization, revalidation
-- **CloudFront**: CDN with custom routing to Lambda/S3
-- **S3**: Static assets (`_next/static/*`)
-- **DynamoDB**: ISR cache and tags
-- **SQS**: Revalidation queue
+The application deploys as a static React SPA using:
+- **S3**: Static assets (index.html, JS, CSS bundles)
+- **CloudFront**: CDN with SPA routing (404 → index.html)
+- **No Lambda** - Pure static site
+- **No DynamoDB** - No server-side caching
+- **No SQS** - No server-side queues
 
 ### API Communication Pattern
 The frontend communicates with the backend Task Logger API using two client patterns:
@@ -67,11 +64,11 @@ The frontend communicates with the backend Task Logger API using two client patt
    - Sends MCP-formatted JSON-RPC requests to `/mcp` endpoint
    - Backend translates to actual MCP server calls
 
-**Important**: All API calls go through `NEXT_PUBLIC_API_URL` environment variable.
+**Important**: All API calls go through `VITE_API_URL` environment variable.
 
 ### Authentication Flow
 - **Zustand store** (`src/stores/auth-store.ts`) manages auth state with localStorage persistence
-- **SSR-aware**: Store uses no-op storage during SSR, only hydrates on client
+- **Client-side only**: Store uses localStorage, hydrates on mount
 - **Migration system**: Version-based localStorage migrations to handle schema changes
 - Token stored in localStorage, sent as Bearer token in API requests
 - Auth state includes: `token`, `user`, `isAuthenticated`, `isAdmin`
@@ -79,75 +76,77 @@ The frontend communicates with the backend Task Logger API using two client patt
 ### State Management Patterns
 - **Zustand**: Client-side state (auth, UI state)
   - Uses `persist` middleware for localStorage
-  - SSR-compatible with `hasHydrated` flag
-- **TanStack Query**: Server state (API data, caching, mutations)
-  - Used for fetching/updating tasks
-  - Handles loading/error states
+  - Client-side only with `hasHydrated` flag
+- **TanStack Query**: Server state (optional - not currently used heavily)
+  - Can be used for fetching/updating tasks with caching
 
 ## Key Architectural Patterns
 
 ### Component Structure
 ```
 src/
-├── app/                    # Next.js App Router pages
-│   ├── page.tsx           # Landing page
-│   ├── dashboard/         # Main task dashboard
-│   ├── settings/          # User settings
-│   └── admin/             # Admin panel
+├── main.tsx                # React root entry point
+├── App.tsx                 # React Router setup
+├── routes/                 # Route components (pages)
+│   ├── LandingPage.tsx     # Login page
+│   ├── DashboardPage.tsx   # Main dashboard
+│   ├── SettingsPage.tsx    # User settings
+│   └── AdminPage.tsx       # Admin panel
 ├── components/
-│   ├── ui/                # shadcn/ui primitives (Button, Dialog, etc.)
-│   ├── auth/              # Auth-related components
-│   ├── tasks/             # Task-specific components
+│   ├── ui/                 # shadcn/ui primitives (Button, Dialog, etc.)
+│   ├── auth/               # Auth-related components
+│   │   ├── AuthGuard.tsx   # Protected route wrapper
+│   │   ├── AdminGuard.tsx  # Admin-only route wrapper
+│   │   └── LoginForm.tsx   # Login form
+│   ├── tasks/              # Task-specific components
 │   │   ├── AITaskLogger.tsx    # AI-powered task logging UI
 │   │   └── TaskTable.tsx       # Task list/table
-│   ├── layout/            # Layout components
-│   └── providers/         # React context providers
+│   ├── layout/             # Layout components
+│   │   └── UserMenu.tsx    # User dropdown menu
+│   └── providers/          # React context providers
 ├── lib/
-│   ├── api/               # API clients
+│   ├── api/                # API clients
 │   │   ├── auth-client.ts      # Authentication API
-│   │   ├── mcp-client.ts       # MCP protocol wrapper
-│   │   └── ai-client.ts        # AI/LLM interactions
-│   ├── auth/              # Auth utilities
-│   └── utils.ts           # General utilities (cn, etc.)
-├── stores/                # Zustand stores
-│   └── auth-store.ts      # Global auth state
-├── hooks/                 # Custom React hooks
-│   ├── useAuth.ts         # Auth helper hook
-│   └── use-toast.ts       # Toast notifications
-└── types/                 # TypeScript type definitions
-    └── index.ts           # Shared types (Task, API responses)
+│   │   └── mcp-client.ts       # MCP protocol wrapper
+│   └── utils.ts            # General utilities (cn, etc.)
+├── stores/                 # Zustand stores
+│   └── auth-store.ts       # Global auth state
+├── hooks/                  # Custom React hooks
+│   ├── useAuth.ts          # Auth helper hook
+│   └── use-toast.ts        # Toast notifications
+└── types/                  # TypeScript type definitions
+    └── index.ts            # Shared types (Task, API responses)
 ```
 
 ### Environment Variables
-**Build-time** (must be prefixed with `NEXT_PUBLIC_`):
-- `NEXT_PUBLIC_API_URL`: Backend API URL (e.g., Lambda Function URL)
-- `NEXT_PUBLIC_AWS_REGION`: AWS region (eu-west-2)
-- `NEXT_PUBLIC_ENVIRONMENT`: Environment (dev/prod)
+**Build-time** (must be prefixed with `VITE_`):
+- `VITE_API_URL`: Backend API URL (e.g., Lambda Function URL)
+- `VITE_AWS_REGION`: AWS region (eu-west-2)
+- `VITE_ENVIRONMENT`: Environment (dev/prod)
 
-**Runtime** (Lambda environment variables, set by Terraform):
-- `CACHE_BUCKET_NAME`: S3 bucket for ISR cache
-- `CACHE_DYNAMO_TABLE`: DynamoDB table for tags
-- `REVALIDATION_QUEUE_URL`: SQS queue for revalidation
+**Accessing in code:**
+```typescript
+const apiUrl = import.meta.env.VITE_API_URL
+```
 
 ### Deployment Pipeline
 GitHub Actions workflow (`.github/workflows/deploy.yml`):
 1. **Branch → Environment mapping**:
    - `main` → dev environment
    - `prod*` → prod environment
-2. **Build**: `npx open-next@latest build` creates `.open-next/` directory
-3. **Package**: Zip Lambda functions (server, image, revalidation)
-4. **Upload**: S3 (Lambda zips + static assets) + SSM (secrets)
-5. **Deploy**: Terraform applies infrastructure changes
-6. **Outputs**: Frontend URL, Lambda names
+2. **Build**: `npm run build` creates `dist/` directory
+3. **Upload**: S3 sync (HTML/assets with different cache policies)
+4. **Deploy**: Terraform applies CloudFront + S3 configuration
+5. **Invalidate**: CloudFront cache invalidation
+6. **Outputs**: Frontend URL, CloudFront distribution ID
 
-### OpenNext Output Structure
+### Build Output Structure
 ```
-.open-next/
-├── server-functions/default/    # Main SSR Lambda
-├── image-optimization-function/ # Image Lambda (optional)
-├── revalidation-function/       # ISR revalidation Lambda (optional)
-├── assets/                      # Static assets (_next/static)
-└── cache/                       # Build cache
+dist/
+├── index.html              # Main HTML entry
+└── assets/                 # Hashed JS/CSS bundles
+    ├── index-[hash].js     # Main JS bundle
+    └── index-[hash].css    # Main CSS bundle
 ```
 
 ## Development Guidelines
@@ -179,29 +178,33 @@ UI components are in `src/components/ui/`. These are NOT npm packages - they're 
 - Dark mode: Not currently implemented
 
 ### TypeScript
-- Strict type checking enabled (`ignoreBuildErrors: false`)
+- Strict type checking enabled
 - Shared types in `src/types/index.ts`
 - API response types: `ApiResponse<T>` wrapper
 
 ## Important Implementation Notes
 
-### SSR and Client State
-- Zustand store is SSR-aware with `hasHydrated` flag
+### Client-Side State
+- Zustand store is client-side only with `hasHydrated` flag
 - Check `hasHydrated` before accessing auth state in components
 - Use `useEffect` for client-only operations
 
 ### API URL Normalization
-Both `AuthClient` and `MCPClient` strip trailing slashes from `NEXT_PUBLIC_API_URL` to prevent double-slash issues in URLs.
+Both `AuthClient` and `MCPClient` strip trailing slashes from `VITE_API_URL` to prevent double-slash issues in URLs.
 
-### Next.js Configuration
+### Vite Configuration
 ```javascript
-output: 'standalone'           // Required for OpenNext/Lambda
-images: { unoptimized: true }  // Images handled by Lambda
-trailingSlash: false           // Consistent URL format
+plugins: [react()]           # React plugin with Fast Refresh
+resolve.alias: { '@': './src' }  # Path alias
+server.port: 3000            # Dev server port
+build.outDir: 'dist'         # Build output directory
 ```
 
-### Error Boundaries
-`ErrorBoundary.tsx` component catches React errors. Use for wrapping route segments that may fail.
+### Routing
+- Client-side routing with React Router v6
+- Protected routes use `<AuthGuard>` wrapper
+- Admin routes use `<AdminGuard>` wrapper
+- 404 fallback redirects to landing page
 
 ## AWS/Terraform Notes
 
@@ -210,37 +213,52 @@ trailingSlash: false           // Consistent URL format
 s3://533267084389-lambda-artifacts/
 └── agent-task-logger-frontend/
     ├── dev/
-    │   ├── deployment-server.zip
-    │   ├── deployment-image.zip
-    │   ├── deployment-revalidation.zip
     │   └── frontend/
-    │       ├── _assets/
-    │       └── _cache/
+    │       ├── index.html
+    │       └── assets/
+    │           ├── index-[hash].js
+    │           └── index-[hash].css
     └── prod/
         └── (same structure)
 ```
 
-### SSM Parameter Store
-GitHub Actions uploads all repository secrets to:
-```
-/app/agent-task-logger-frontend/{environment}/{SECRET_NAME}
-```
-Sensitive secrets (with `API_KEY`, `TOKEN`, `SECRET`, `PASSWORD` in name) use `SecureString` type.
-
 ### CloudFront Routing Pattern
-- `/_assets/*` → S3 static assets (immutable, max-age=31536000)
-- `/_cache/*` → S3 cache (must-revalidate)
-- `/_next/image/*` → Image optimization Lambda
-- Everything else → Server Lambda (SSR)
+- All requests → S3 static files
+- 404/403 errors → `/index.html` (SPA routing)
+- `/assets/*` → Long cache (1 year, immutable)
+- `/index.html` → No cache (must-revalidate)
 
-### Lambda Function Names
-- Server: `task-logger-frontend-server-{env}`
-- Image: `task-logger-frontend-image-{env}`
-- Revalidation: `task-logger-frontend-revalidation-{env}`
+### CloudFront Distribution
+- Origin: S3 bucket with OAI (Origin Access Identity)
+- Price class: PriceClass_100 (US, Canada, Europe)
+- HTTPS only (redirect HTTP → HTTPS)
+- Gzip compression enabled
+
+## Comparison with Previous Architecture
+
+### Before (Next.js + OpenNext)
+- **890 npm packages**
+- **3 Lambda functions** (server, image, revalidation)
+- **DynamoDB table** for ISR cache
+- **SQS FIFO queue** for revalidation
+- **5+ minute** build times
+- **383 lines** of Terraform
+- **333 lines** of GitHub Actions
+- **Complex** routing with multiple origins
+
+### After (Vite + React Router)
+- **380 npm packages** (removed 510 packages!)
+- **0 Lambda functions**
+- **No DynamoDB**
+- **No SQS**
+- **1.5 second** build times
+- **131 lines** of Terraform
+- **187 lines** of GitHub Actions
+- **Simple** S3 + CloudFront static hosting
 
 ## Related Repositories
 - **Backend**: agent-task-logger (FastAPI + MCP server)
-- **Shared AWS Resources**: S3 buckets, SSM parameters, DynamoDB tables
+- **Shared AWS Resources**: S3 buckets, DynamoDB tables (backend only)
 
 ## Region
 All AWS resources: **eu-west-2** (London)

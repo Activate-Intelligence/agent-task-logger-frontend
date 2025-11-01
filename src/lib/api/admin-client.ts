@@ -27,7 +27,7 @@ export class AdminClient {
     }
 
     const data = await response.json();
-    return data.conversations || [];
+    return data.sessions || [];
   }
 
   async getConversationMessages(

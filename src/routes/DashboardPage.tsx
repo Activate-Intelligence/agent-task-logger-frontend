@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AuthGuard } from '@/components/auth';
-import { UserMenu } from '@/components/layout';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -138,21 +138,8 @@ function DashboardContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 justify-between items-center">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-slate-900">Task Logger</h1>
-            </div>
-            <div className="flex items-center gap-4">
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <AppLayout>
+      <div className="space-y-8">
         {/* Hero Section with Inline AI Input */}
         <div className="mb-8 bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-8 border border-slate-200 shadow-sm">
           <div className="max-w-3xl">
@@ -242,15 +229,15 @@ function DashboardContent() {
           onToggleFilter={setShowAllTasks}
           currentUser={user?.username}
         />
-      </main>
 
-      {/* AI Task Logger Dialog */}
-      <AITaskLogger
-        open={isAIDialogOpen}
-        onOpenChange={setIsAIDialogOpen}
-        onTaskLogged={handleTaskLogged}
-      />
-    </div>
+        {/* AI Task Logger Dialog */}
+        <AITaskLogger
+          open={isAIDialogOpen}
+          onOpenChange={setIsAIDialogOpen}
+          onTaskLogged={handleTaskLogged}
+        />
+      </div>
+    </AppLayout>
   );
 }
 

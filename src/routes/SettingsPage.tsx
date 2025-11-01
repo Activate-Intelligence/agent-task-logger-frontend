@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,16 +62,12 @@ function SettingsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
-          <p className="text-sm text-slate-600">Manage your account settings and preferences</p>
-        </div>
-      </header>
-
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <AppLayout
+      pageTitle="Settings"
+      pageDescription="Manage your account settings and preferences"
+      maxWidth="narrow"
+    >
+      <div className="space-y-6">
         {/* Profile Information Card */}
         <Card>
           <CardHeader>
@@ -192,7 +189,7 @@ function SettingsContent() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AppLayout>
   );
 }
 

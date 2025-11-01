@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AdminGuard } from '@/components/auth/AdminGuard';
+import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -225,27 +226,17 @@ function AdminContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-                <Shield className="h-6 w-6" />
-                Admin Panel
-              </h1>
-              <p className="text-sm text-slate-600">Manage users and system settings</p>
-            </div>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Create User
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <AppLayout
+      pageTitle="Admin Panel"
+      pageDescription="Manage users and system settings"
+      headerActions={
+        <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Create User
+        </Button>
+      }
+    >
+      <div className="space-y-6">
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -342,10 +333,9 @@ function AdminContent() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Create User Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        {/* Create User Dialog */}
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
@@ -395,8 +385,8 @@ function AdminContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit User Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        {/* Edit User Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit User: {selectedUser?.username}</DialogTitle>
@@ -438,7 +428,8 @@ function AdminContent() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 

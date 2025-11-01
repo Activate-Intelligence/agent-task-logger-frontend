@@ -12,6 +12,9 @@ import { TaskTable } from '@/components/tasks/TaskTable';
 import { mcpClient, Task } from '@/lib/api/mcp-client';
 import { useAuthStore } from '@/stores/auth-store';
 
+// Force dynamic rendering - don't prerender this page during build
+export const dynamic = 'force-dynamic'
+
 function DashboardContent() {
   const { token, user } = useAuthStore();
   const [isAIDialogOpen, setIsAIDialogOpen] = useState(false);

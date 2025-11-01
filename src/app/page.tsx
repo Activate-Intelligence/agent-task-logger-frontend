@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/auth-store'
 import { LoginForm } from '@/components/auth/LoginForm'
 
+// Force dynamic rendering - don't prerender this page during build
+export const dynamic = 'force-dynamic'
+
 export default function HomePage() {
   const router = useRouter()
   const { isAuthenticated, hasHydrated } = useAuthStore()

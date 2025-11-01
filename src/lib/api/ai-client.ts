@@ -74,6 +74,36 @@ export class AIClient {
   }
 
   /**
+   * Get conversation history for a session
+   */
+  async getConversationHistory(sessionId: string): Promise<Message[]> {
+    if (!this.token) {
+      throw new Error('Authentication token not set');
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/ai/log-task/history/${sessionId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Request failed' }));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.messages || [];
+    } catch (error) {
+      console.error('Failed to fetch conversation history:', error);
+      throw error instanceof Error ? error : new Error('Failed to fetch conversation history');
+    }
+  }
+
+  /**
    * Stream messages for real-time responses (future enhancement)
    */
   async *streamMessage(prompt: string, sessionId?: string): AsyncGenerator<string> {

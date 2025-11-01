@@ -21,8 +21,15 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [error, setError] = useState<string>('');
-  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+  const [sessionId, setSessionId] = useState<string | undefined>(() => {
+    // Load sessionId from localStorage on mount
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('ai-task-logger-session-id') || undefined;
+    }
+    return undefined;
+  });
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -33,6 +40,34 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
     }
   }, [token]);
 
+  // Load conversation history when dialog opens with existing sessionId
+  useEffect(() => {
+    async function loadHistory() {
+      if (open && sessionId && token) {
+        setIsLoadingHistory(true);
+        try {
+          const history = await aiClient.getConversationHistory(sessionId);
+          setMessages(history);
+        } catch (err) {
+          console.error('Failed to load conversation history:', err);
+          // Don't show error to user - just start fresh
+          setMessages([]);
+        } finally {
+          setIsLoadingHistory(false);
+        }
+      }
+    }
+
+    loadHistory();
+  }, [open, sessionId, token]);
+
+  // Persist sessionId to localStorage whenever it changes
+  useEffect(() => {
+    if (sessionId && typeof window !== 'undefined') {
+      localStorage.setItem('ai-task-logger-session-id', sessionId);
+    }
+  }, [sessionId]);
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -42,10 +77,10 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
 
   // Focus input when dialog opens
   useEffect(() => {
-    if (open) {
+    if (open && !isLoadingHistory) {
       setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }, [open]);
+  }, [open, isLoadingHistory]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -107,6 +142,9 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
     setError('');
     setInput('');
     setSessionId(undefined); // Reset session to start new conversation
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('ai-task-logger-session-id');
+    }
   };
 
   const handleClose = () => {
@@ -129,7 +167,14 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
         {/* Messages Area */}
         <div className="flex-1 px-6 py-4 overflow-y-auto" ref={scrollAreaRef}>
           <div className="space-y-4">
-            {messages.length === 0 && (
+            {isLoadingHistory && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-slate-600">Loading conversation history...</span>
+              </div>
+            )}
+
+            {!isLoadingHistory && messages.length === 0 && (
               <Card className="p-4 bg-slate-50 border-slate-200">
                 <div className="space-y-3">
                   <p className="text-sm font-medium text-slate-700">

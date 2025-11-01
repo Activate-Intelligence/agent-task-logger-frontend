@@ -11,6 +11,7 @@ export interface Message {
 export interface AIResponse {
   message: string;
   toolResults?: any[];
+  sessionId?: string;
   error?: string;
 }
 
@@ -35,7 +36,7 @@ export class AIClient {
     this.token = null;
   }
 
-  async sendMessage(prompt: string, history?: Message[]): Promise<AIResponse> {
+  async sendMessage(prompt: string, sessionId?: string): Promise<AIResponse> {
     if (!this.token) {
       throw new Error('Authentication token not set');
     }
@@ -49,7 +50,7 @@ export class AIClient {
         },
         body: JSON.stringify({
           prompt,
-          history: history || [],
+          session_id: sessionId, // Send session_id to backend
         }),
       });
 
@@ -63,6 +64,7 @@ export class AIClient {
       return {
         message: data.response || data.message || 'Task logged successfully',
         toolResults: data.toolResults || data.tool_results,
+        sessionId: data.sessionId, // Capture session_id from response
         error: data.error,
       };
     } catch (error) {
@@ -74,7 +76,7 @@ export class AIClient {
   /**
    * Stream messages for real-time responses (future enhancement)
    */
-  async *streamMessage(prompt: string, history?: Message[]): AsyncGenerator<string> {
+  async *streamMessage(prompt: string, sessionId?: string): AsyncGenerator<string> {
     if (!this.token) {
       throw new Error('Authentication token not set');
     }
@@ -87,7 +89,7 @@ export class AIClient {
       },
       body: JSON.stringify({
         prompt,
-        history: history || [],
+        session_id: sessionId,
         stream: true,
       }),
     });

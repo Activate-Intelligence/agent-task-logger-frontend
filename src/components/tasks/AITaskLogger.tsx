@@ -22,6 +22,7 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [sessionId, setSessionId] = useState<string | undefined>(undefined);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -60,7 +61,13 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
     setIsLoading(true);
 
     try {
-      const response = await aiClient.sendMessage(userMessage.content, messages);
+      // Send message with session_id (backend handles conversation history)
+      const response = await aiClient.sendMessage(userMessage.content, sessionId);
+
+      // Capture session_id from response for subsequent messages
+      if (response.sessionId) {
+        setSessionId(response.sessionId);
+      }
 
       const assistantMessage: Message = {
         role: 'assistant',
@@ -99,6 +106,7 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
     setMessages([]);
     setError('');
     setInput('');
+    setSessionId(undefined); // Reset session to start new conversation
   };
 
   const handleClose = () => {
@@ -240,7 +248,7 @@ export function AITaskLogger({ open, onOpenChange, onTaskLogged }: AITaskLoggerP
               onClick={handleClear}
               disabled={messages.length === 0}
             >
-              Clear conversation
+              New conversation
             </Button>
             <Button variant="ghost" size="sm" onClick={handleClose}>
               Close

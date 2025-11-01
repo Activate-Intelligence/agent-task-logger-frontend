@@ -9,7 +9,7 @@ data "aws_s3_bucket" "lambda_artifacts" {
 # S3 bucket name for frontend assets (using existing artifacts bucket with path prefix)
 locals {
   assets_bucket_name   = data.aws_s3_bucket.lambda_artifacts.id
-  assets_bucket_prefix = "agent-task-logger-frontend/${var.environment}/frontend/"
+  assets_bucket_prefix = "agent-task-logger-frontend/${var.environment}/frontend"
 }
 
 # CloudFront Origin Access Identity for S3

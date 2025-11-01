@@ -13,11 +13,6 @@ variable "s3_bucket" {
   default     = "533267084389-lambda-artifacts"
 }
 
-variable "s3_prefix" {
-  description = "S3 prefix for the deployment packages (e.g., agent-task-logger-frontend/dev/)"
-  type        = string
-}
-
 variable "aws_region" {
   description = "AWS region"
   type        = string

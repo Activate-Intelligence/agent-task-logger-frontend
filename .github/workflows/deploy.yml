@@ -132,7 +132,6 @@ jobs:
             --cache-control "public, max-age=31536000, immutable" \
             --delete
 
-          echo "s3_prefix=agent-task-logger-frontend/$ENVIRONMENT/" >> $GITHUB_OUTPUT
           echo "s3_bucket=$S3_BUCKET" >> $GITHUB_OUTPUT
           echo "✓ Static site uploaded successfully"
 
@@ -155,7 +154,6 @@ jobs:
 
           terraform -chdir=terraform apply -auto-approve \
             -var="s3_bucket=${{ steps.upload.outputs.s3_bucket }}" \
-            -var="s3_prefix=${{ steps.upload.outputs.s3_prefix }}" \
             -var="environment=$ENVIRONMENT"
 
       - name: Invalidate CloudFront Cache

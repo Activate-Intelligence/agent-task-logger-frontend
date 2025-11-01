@@ -11,6 +11,7 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   trailingSlash: false,
+  // Trigger rebuild: 2025-11-01
 }
 
 module.exports = nextConfig
